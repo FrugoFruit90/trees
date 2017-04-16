@@ -1,34 +1,22 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.linear_model import LinearRegression
-
+from sklearn.model_selection import train_test_split
+import xgboost as xgb
+from sklearn.externals import joblib
+from drzewa.drzewa.constants import SUBS_TYPE
 # Load the data
-data = pd.read_csv('/home/janek/Documents/trees/data/trees.csv')
-print(data.shape)
-print(data.columns)
-labels, levels = pd.factorize(data['gatunek'])
-data['labels'] = labels
-data.fillna(0)
-label_counts = pd.Series(labels).value_counts()
-filt_data = data[data['labels'].isin(label_counts[label_counts > 30].index)]
+data = pd.read_csv('data/trees.csv')
+species_dummies = pd.get_dummies(data['gatunek'])
 
-filt_data['obwod'].hist(by=filt_data['labels'])
-plt.scatter(data['obwod'], data['O3'], c=labels)
-plt.show()
+seed = 9001
+y = data[SUBS_TYPE].fillna(0)
+x = pd.concat([pd.get_dummies(data['gatunek']), data[['obwod', 'srednica_kor']]], axis=1)
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=.1)
 
+xgb_r = xgb.XGBRegressor()
+for metric in SUBS_TYPE:
+    xgb_r.fit(x_train, np.array(y_train[metric]))
+    print('R^2 dla lasu losowego wynosi {}% przy estymacji {}'.format(
+        int(round(xgb_r.score(x_test, y_test[metric]), 2) * 100), metric))
+    joblib.dump(xgb_r, 'drzewa/drzewa/models/{}_xgb'.format(metric))
 
-
-#
-# plt.scatter(data['srednica_kor'], data['O3'])
-# plt.show()
-
-y = np.array(data['O3'].fillna(0))
-x = np.array(data[['obwod', 'srednica_kor']])
-np.any(np.isnan(x))
-lr = LinearRegression()
-lr.fit(x, y)
-print('R^2 wynosi {}'.format(lr.score(x, y)))
-a = lr.predict(x)
-plt.figure()
-plt.boxplot(data['srednica_kor'])
