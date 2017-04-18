@@ -16,4 +16,3 @@ def give_predictions(request):
     for item in request.data:
         predictions[item.pk] = [model.predict(item.data) for model in models]
     return JsonResponse(data=predictions)
-
